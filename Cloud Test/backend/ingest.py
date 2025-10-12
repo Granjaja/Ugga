@@ -1,4 +1,4 @@
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 import os
 from dotenv import load_dotenv
 from tika import parser
@@ -11,19 +11,29 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
-INDEX_NAME = os.getenv("PINECONE_INDEX", "gran_vibe-coding")
-DOC_ROOT = os.getenv("DOC_ROOT", "./documents")
+INDEX_NAME = os.getenv("PINECONE_INDEX")
+DOC_ROOT = os.getenv("DOC_ROOT")
 
 openai.api_key = OPENAI_API_KEY
 
 # Initialize Pinecone 
-pinecone.init(api_key=PINECONE_API_KEY, environment = PINECONE_ENVIRONMENT)
+pc = Pinecone(
+        api_key=PINECONE_API_KEY
+    )
 
 # Create Pinecone index if it doesn't exist
-if INDEX_NAME not in pinecone.list_indexes():
-    pinecone.create_index(INDEX_NAME, dimension=1536, metric='cosine', pod_type='p1')
+if not pc.has_index(INDEX_NAME):
+    pc.create_index_for_model(
+        name=INDEX_NAME,
+        cloud="aws",
+        region="us-east-1",
+        embed={
+            "model":"llama-text-embed-v2",
+            "field_map":{"text": "chunk_text"}
+        }
+    )
 
-index = pinecone.Index(INDEX_NAME)
+index = pc.Index(INDEX_NAME)
 
 
 # Function to extract text from file using Apache Tika
@@ -89,7 +99,7 @@ def upsert_to_pinecone(path:str, acl: dict):
         print(f"Upserted batch {i//batch_size + 1} with {len(batch)} vectors.")
 
 
-def discover_and_ingest(directory: str, acl: dict):
+def discover_and_ingest(path: str, acl: dict):
     """
     Discover files in a directory and ingest them.
     
@@ -106,4 +116,4 @@ def discover_and_ingest(directory: str, acl: dict):
 
 
 if __name__ == "__main__":
-    discover_and_ingest()
+    discover_and_ingest(DOC_ROOT, acl={"access": "company", "teams":["all"]})

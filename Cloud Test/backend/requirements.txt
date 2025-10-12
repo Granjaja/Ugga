@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+pinecone
+openai
+python-dotenv
+tika
