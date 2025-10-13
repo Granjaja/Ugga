@@ -5,8 +5,22 @@ from sqlalchemy.orm import Session
 from models import User
 from fastapi import HTTPException
 from auth import hash_password, verify_password, create_access_token, decode_access_token
+from fastapi.middleware.cors import CORSMiddleware
+
+
+
 
 app = FastAPI()
+
+#Cross-Origin Resource Sharing(CORS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 #Create all the tables in the database
 Base.metadata.create_all(bind=engine)
 
@@ -28,9 +42,9 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = hash_password(user.password)
     new_user = User(
+        name=user.name,
         email=user.email,
         password=hashed_password,
-        name=user.name,
         role=user.role
     )
 
@@ -71,8 +85,9 @@ def authorize_user(token: str = Header(None), db: Session = Depends(get_db)):
     return user
 
 
+
 # Protected route for auth
 @app.post("/protected")
 def protected_route(user: User = Depends(authorize_user)):
-    return {"message": "Welcome to the protected route!", "user": user}
+    return {"message": "You are authorised to access this route", "user": user}
 

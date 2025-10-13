@@ -1,19 +1,31 @@
-
 import os
 import openai
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 import time
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.security import OAuth2PasswordBearer
+from database import SessionLocal
+from sqlalchemy.orm import Session
+from jose import JWTError, jwt
+from models import User
+
 
 load_dotenv()
+
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
 INDEX_NAME = os.getenv("PINECONE_INDEX")
 DOC_ROOT = os.getenv("DOC_ROOT", "./documents")
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 
 openai.api_key = OPENAI_API_KEY
 
@@ -24,8 +36,15 @@ index = pc.Index(INDEX_NAME)
 
 app = FastAPI()
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-#
+
+#  Request model for query endpoint
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 5  # Number of top results to return
@@ -50,6 +69,30 @@ def build_prompt(query: str, contexts: list[dict]) -> str:
         prompt += f"---\nDOC: {context['metadata']['doc_id']} (chunk {context['metadata']['chunk_index']})\n{context['metadata']['text_preview']}\n\n"
     prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like [doc_id::chunk_index]."
     return prompt
+@app.get("/get_current_user")
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email:str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.email == email).first()
+
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
