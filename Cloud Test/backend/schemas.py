@@ -13,4 +13,9 @@ class UserResponse(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True  #accepts input data from SQLAlchemy model instance not just a dictionary
+        from_attributes = True  #accepts input data from SQLAlchemy model instance not just a dictionary
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+        

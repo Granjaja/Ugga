@@ -1,4 +1,6 @@
 'use server'
+import { getSession, signIn } from 'next-auth/react'
+import { cookies } from 'next/headers'
 
 
 export async function registerUser(prevState: any, formData: FormData) {
@@ -32,17 +34,162 @@ export async function registerUser(prevState: any, formData: FormData) {
         role: 'employee',
       })
     })
-    console.log('Response:', res)
 
     if (!res.ok) {
-      const data = await res.json()
-      return {
-        errors: { email: data.detail || 'Registration failed' },
-        success: false,
+      const responseText = await res.text();
+      try {
+        const data = JSON.parse(responseText);
+        return {
+          errors: { email: data.detail || 'Registration failed' },
+          success: false,
+        };
+      } catch (e) {
+        console.error('Error parsing JSON:', responseText);
+        return {
+          errors: { general: 'An unexpected error occurred from the server.' },
+          success: false,
+        };
       }
     }
 
     return { success: true, errors: {} }
+  } catch (err) {
+    console.error('Error:', err)
+    return {
+      errors: { general: 'Server not reachable' },
+      success: false,
+    }
+  }
+}
+
+
+export async function loginUser(prevState: any, formData: FormData) {
+  const email = formData.get('email')?.toString().trim()
+  const password = formData.get('password')?.toString()
+
+  try {
+      const res = await signIn('credentials', {
+          redirect: false,
+          email,
+          password,
+      });
+
+      if (res?.error) {
+        return {
+          errors: { general: res.error || 'Login failed' },
+          success: false,
+        };
+      }
+      return { ...prevState, success: true }
+
+  } catch (err) {
+      console.error('Error:', err)
+      return {...prevState,
+          errors: { general: 'Server not reachable' },
+          success: false,
+      }
+  }
+
+}
+
+ 
+
+export async function logoutUser() {
+  try {
+    const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
+
+    const res = await fetch(`${NEXT_PUBLIC_API_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
+    if (!res.ok) {
+      const responseText = await res.text();
+      try {
+        const data = JSON.parse(responseText);
+        return {
+          errors: { general: data.detail || 'Logout failed' },
+          success: false,
+        };
+      } catch (e) {
+        console.error('Error parsing JSON:', responseText);
+        return {
+          errors: { general: 'An unexpected error occurred from the server.' },
+          success: false,
+        };
+      }
+    }
+
+    return { success: true, errors: {} }
+  } catch (err) {
+    console.error('Error:', err)
+    return {
+      errors: { general: 'Server not reachable' },
+      success: false,
+    }
+  }
+}
+
+export async function fetchUserData() {
+  const session = await getSession()
+  const token = session?.access_token
+
+  if (!token) {
+    throw new Error('No token found. User may not be authenticated.')
+  }
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_current_user`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch user data')
+  }
+  const user = await res.json()
+  return user
+}
+
+
+export async function currentUser() {
+  try {
+    const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    
+    // Set cookies for server-side requests
+
+    /* windows is an object on the client-side, and undefined on the server-side */
+    if (typeof window === 'undefined') {
+      const cookieStore = await cookies()
+      const cookieHeader = cookieStore.toString()
+      if (cookieHeader) {
+        headers['cookie'] = cookieHeader
+      }
+    }
+
+    const res = await fetch(`${NEXT_PUBLIC_API_URL}/get_current_user`, {
+      method: 'GET',
+      credentials: 'include',
+      headers,
+    })
+
+    console.log('currentUser response status:', res);
+
+    if (!res.ok) {
+      const responseText = await res.text().catch(() => '')
+      console.error('currentUser: backend responded non-OK:', res.status, responseText)
+      return {
+        errors: { general: 'Not authenticated' },
+        success: false,
+        status: res.status,
+      }
+    }
+
+    const user = await res.json();
+    return { success: true, user: user.user };
   } catch (err) {
     console.error('Error:', err)
     return {

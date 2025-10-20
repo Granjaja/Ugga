@@ -1,13 +1,21 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { registerUser } from '../auth/actions'
+import { useRouter } from 'next/navigation'
 
 export default function SignupForm() {
+  const router = useRouter()
   const [state, formAction, pending] = useActionState(registerUser, {
     errors: {},
     success: false,
   })
+
+  useEffect(() => {
+    if (state.success) {
+      router.push('/auth/login')
+    }
+  }, [state.success, router])
 
   return (
     <form action={formAction} className="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg space-y-4">

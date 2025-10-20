@@ -1,7 +1,7 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -113,10 +113,26 @@
 }
 
 @layer base {
+  
   * {
-    @apply border-border outline-ring/50;
+@apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-background {
+    background-color: rgb(245 245 245); 
+  }
+  .border-border {
+    border-color: rgb(228 228 231); 
+  }
+  .outline-ring\/50 {
+    outline-color: rgb(59 130 246 / 0.5); 
+  }
+  .text-foreground {
+    color: rgb(24 24 27); 
   }
 }

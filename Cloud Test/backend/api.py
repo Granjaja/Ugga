@@ -2,14 +2,16 @@ import os
 import openai
 from pinecone import Pinecone
 import time
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request, APIRouter, UploadFile, File
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordBearer
 from database import SessionLocal
 from sqlalchemy.orm import Session
-from jose import JWTError, jwt
+from jose import JWTError
 from models import User
+from auth import decode_access_token
+
 
 
 load_dotenv()
@@ -36,6 +38,10 @@ index = pc.Index(INDEX_NAME)
 
 app = FastAPI()
 
+api_router = APIRouter()
+
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -49,12 +55,25 @@ class QueryRequest(BaseModel):
     query: str
     top_k: int = 5  # Number of top results to return
 
-#  User authorization function
-def authorize_user(auth_header: str):
+
+#  User authorization 
+@api_router.get("/user_authorization")
+def authorize_user(auth_header: str = Header(None)):
+    
     if not auth_header:
         raise HTTPException(status_code=401, detail="Authorization header missing")
+    try:
+        scheme, _, token = auth_header.partition(" ")
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+        payload = decode_access_token(token)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        user = {"user_id": user_id}  # In real implementation, fetch user from DB
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
     
-    user = {"user_id": "user123", "teams": ["all"], "email": "gran@gmail.com"}
     return user
 
 #Function to build the prompt 
@@ -69,29 +88,6 @@ def build_prompt(query: str, contexts: list[dict]) -> str:
         prompt += f"---\nDOC: {context['metadata']['doc_id']} (chunk {context['metadata']['chunk_index']})\n{context['metadata']['text_preview']}\n\n"
     prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like [doc_id::chunk_index]."
     return prompt
-@app.get("/get_current_user")
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=401,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email:str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.email == email).first()
-
-    if user is None:
-        raise credentials_exception
-    return user
-
-
 
 
 @app.post("/query")
@@ -151,3 +147,13 @@ async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
     sources = [{"doc_id": c['metadata']['doc_id'], "chunk_index": c['metadata']['chunk_index'], "text_preview": c['metadata']['text_preview'], "source_path": c['metadata']['source']} for c in contexts]
 
     return {"answer": answer, "sources": sources, "audit_log": audit}
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        with open(os.path.join(DOC_ROOT, file.filename), "wb") as f:
+            f.write(contents)
+        return {"filename": file.filename, "message": "File uploaded successfully"}
+    except Exception as e:
+        return {"error": str(e)}
