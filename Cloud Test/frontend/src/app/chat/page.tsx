@@ -2,8 +2,7 @@
 import { getServerSession } from 'next-auth';
 import Chat from '../components/Chat'
 import { redirect } from 'next/navigation';
-import { GET as handler } from '../api/auth/[...nextauth]/route';
-import { authOptions } from '../api/auth/[...nextauth]/route';
+import { authOptions } from '../auth';
 
 export default async function ChatPage() {
 

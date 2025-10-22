@@ -94,8 +94,8 @@ export default function LoginForm() {
       <div className='flex items-center justify-center gap-4 mt-4'>
         <div>New user? </div>
         <div className="flex items-center justify-center gap-4 ">
-          <Link href={"/auth/signup"}>
-            <Button>Signup</Button>
+          <Link href={"/auth/signup"} >
+            <Button className='hover:underline'>Signup</Button>
           </Link>
         </div>
       </div>

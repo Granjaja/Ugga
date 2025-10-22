@@ -1,5 +1,5 @@
 import os
-import openai
+from openai import OpenAI
 from pinecone import Pinecone
 import time
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, APIRouter, UploadFile, File
@@ -11,11 +11,7 @@ from sqlalchemy.orm import Session
 from jose import JWTError
 from models import User
 from auth import decode_access_token
-
-
-
-load_dotenv()
-
+import shutil
 
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -29,14 +25,14 @@ ALGORITHM = os.getenv("ALGORITHM")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
+# Initialize Pinecone
 pc = Pinecone(
         api_key=PINECONE_API_KEY
     )
 index = pc.Index(INDEX_NAME)
 
-app = FastAPI()
 
 api_router = APIRouter()
 
@@ -56,22 +52,31 @@ class QueryRequest(BaseModel):
     top_k: int = 5  # Number of top results to return
 
 
-#  User authorization 
-@api_router.get("/user_authorization")
-def authorize_user(auth_header: str = Header(None)):
-    
-    if not auth_header:
+
+def authorize_user(authorization: str = Header(None)):
+    print("AUTH HEADER:", {authorization})
+    if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
+    
     try:
-        scheme, _, token = auth_header.partition(" ")
+        scheme, token = authorization.split()
         if scheme.lower() != "bearer":
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+        
+        if not token:
+            raise HTTPException(status_code=401, detail="Token missing")
+            
         payload = decode_access_token(token)
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        user_id = payload.get("sub")
+        if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token payload")
-        user = {"user_id": user_id}  # In real implementation, fetch user from DB
-    except JWTError:
+            
+        return {"user_id": user_id}
+            
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+    except JWTError as e:
+        print("JWT Error:", str(e))
         raise HTTPException(status_code=401, detail="Invalid token")
     
     return user
@@ -86,29 +91,37 @@ def build_prompt(query: str, contexts: list[dict]) -> str:
     for context in contexts:
         prompt += f"[{context['doc_id']} - chunk {context['chunk_index']}]: {context['text']}\n"
         prompt += f"---\nDOC: {context['metadata']['doc_id']} (chunk {context['metadata']['chunk_index']})\n{context['metadata']['text_preview']}\n\n"
+   
     prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like [doc_id::chunk_index]."
     return prompt
 
 
-@app.post("/query")
-async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
-    user = authorize_user(authorization)
+@api_router.post("/query")
+async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)):
 
     #1. Embed the query
 
-    embed_response = openai.Embedding.create(model = "text-embedding-3-small", input=req.query)
+    query_text = req.query
 
-    query_embed = embed_response['data'][0]['embedding']
+    #2. Generate embedding for the query using OpenAI
+    embedding_response = client.embeddings.create(model = "text-embedding-3-small", input=query_text)
 
-    #2. Query Pinecone for similar document chunks
+    #3. Extract the embedding vector(numerical rep of the text) from the response
+    query_embed = embedding_response.data[0].embedding
 
-    # filter = {"acl.team": {"$in": user['teams']}}
+    #4. Limit vectors eligible for retrive - only vectors with acl field 
+    filter = {"acl":{"$exists": True}} 
 
-    filter = {"acl":{"$exists": True}} # vectors with acl field for testing
+    #5. Perform similarity search in Pinecone 
+    res = index.query(vector=query_embed, top_k=req.top_k, include_metadata=True, 
+    filter=filter, include_values=False) #query pinecone index
 
-    res = index.query(vector=query_embed, top_k=req.top_k, include_metadata=True, filter=filter, include_values=False) #query pinecone index
+    #6. Extract relevant contexts from the search results
+
+    """ context is a list of retrieved document chunks / relevant pieces of information to answer the query """
 
     contexts = []
+
 
     for match in res['matches']:
         contexts.append({
@@ -116,10 +129,11 @@ async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
             "metadata": match['metadata']
         })
 
-    #3. Build the prompt with the retrieved contexts and call LLM
+    #7. Build the prompt with the retrieved contexts and call LLM
     prompt = build_prompt(req.query, contexts)
 
-    completion = openai.ChatCompletion.create(
+    #8. Call OpenAI ChatCompletion API with the constructed prompt
+    completion = client.chat.completions.create(
         model = "gpt-4o-mini",
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
@@ -129,7 +143,7 @@ async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
         temperature = 0.0
     )
 
-    answer = completion['choices'][0]['message']['content']
+    answer = completion.choices[0].message.content
 
     #4. Audit log entry for the query and response 
 
@@ -148,12 +162,21 @@ async def query_endpoint(req: QueryRequest, authorization: str = Header(None)):
 
     return {"answer": answer, "sources": sources, "audit_log": audit}
 
-@app.post("/upload")
+@api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
+
     try:
-        contents = await file.read()
-        with open(os.path.join(DOC_ROOT, file.filename), "wb") as f:
-            f.write(contents)
+        file_path = os.path.join(DOC_ROOT, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
         return {"filename": file.filename, "message": "File uploaded successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+    
+@api_router.get("/list-files")
+async def list_files():
+    try:
+        files = os.listdir(DOC_ROOT)
+        return [{"name": f, "url": f"/files/{f}"} for f in files]
     except Exception as e:
         return {"error": str(e)}

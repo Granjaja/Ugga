@@ -1,10 +1,9 @@
 "use client"
 
-import { redirect, useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { useState } from 'react';
 import Sidebar from './Sidebar';
-import { getServerSession } from 'next-auth/next';
-import { GET as handler } from '../api/auth/[...nextauth]/route';
+import { useSession } from 'next-auth/react';
 
 
 type Message = {role: "user" | "assistant", text: string}
@@ -16,47 +15,59 @@ export default  function Chat() {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [sources, setSources] = useState<any[]>([]);
+    const {data: session} = useSession();
 
-    const router = useRouter();
 
-    const session =  getServerSession(handler)
+    const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+
     if (!session) {
       redirect('/auth/login');
     }
 
     const send = async () => {
-        if (!input.trim()) return;
+        if (!input.trim() || !session?.access_token) return;
       
         const userMessage: Message = {role: "user", text: input.trim()};
         setMessages([...messages, userMessage]);
         setInput("");
         setLoading(true);
-
+        
         try {
-            const resp = await fetch("/query", {
+            const resp = await fetch(`${NEXT_PUBLIC_API_URL}/api/query`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+                    "Authorization": `Bearer ${session.access_token}`,
+                    "Accept": "application/json"
                 },
+                credentials: 'include',
                 body: JSON.stringify({
-                    query: input,
+                    query: input.trim(),
                     top_k: 5,
                 }),
-                });
+            });
+            
+            console.log('Query response:', resp.status);
+            
+            if (!resp.ok) {
+                const error = await resp.text();
+                console.error('Query error:', error);
+                throw new Error(error);
+            }
 
-                const data = await resp.json();
+            const data = await resp.json();
 
-                setMessages((m) => [...m, { role: "assistant", text: data.answer }]);
+            setMessages((m) => [...m, { role: "assistant", text: data.answer }]);
 
-                setSources(data.sources || []);
+            setSources(data.sources || []);
 
-            } catch (err) {
-                setMessages((m) => [...m, { role: "assistant", text: "Error: could not fetch answer." }]);
-                } finally {
-                setLoading(false);
-                }
-            };
+        } catch (err) {
+            setMessages((m) => [...m, { role: "assistant", text: "Error: could not fetch answer." }]);
+            } finally {
+            setLoading(false);
+            }
+        };
 
     
 

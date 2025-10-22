@@ -86,7 +86,7 @@ function Nav() {
     //   };
 
   return (
-    <div className="flex items-center justify-between m-4 p-4">
+    <div className="flex items-center justify-between m-2 p-2">
         <Link href={"/"}>
         <h2 className="text-2xl font-bold mb-4 flex items-center justify-center bg-gradient-to-r from-black via-blue-500 to-green-500 text-orange-500 p-2 rounded-md"> Ugga</h2>
         </Link>
@@ -105,8 +105,8 @@ function Nav() {
           <button onClick={() => signOut()}>Logout</button>
         </>
       ) : (
-        <Link href={"/auth/login"}>
-          <Button>Login</Button> 
+        <Link href={"/auth/login"} >
+          <Button className='hover:underline'>Login</Button> 
           </Link>
         
       )}

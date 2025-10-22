@@ -5,13 +5,17 @@ from sqlalchemy.orm import Session
 from models import User
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
 from typing import Set
 from api import api_router
 from fastapi.responses import JSONResponse
+from jose import JWTError
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
-app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
 
 
 
@@ -21,11 +25,12 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Set-Cookie"]
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+security = HTTPBearer()
 
 token_blacklist: Set[str] = set()
 
@@ -93,13 +98,17 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     #     path="/",
     #     max_age=3600
     # )
+
+    print("Generated token:", token)
+    
     return {
         "access_token": token,
         "token_type": "bearer",
         "user": {
             "id": user.id,
             "email": user.email,
-            "name": user.name
+            "name": user.name,
+            "role": user.role
         }
     }
 
@@ -107,32 +116,45 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
 @app.get("/get_current_user")
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     print("Received get_current_user request with headers:", request.cookies)
-    token = request.cookies.get("access_token")
+    token = request.cookies.get("access_token") or request.headers.get("Authorization")
     
     if not token:
-        # Also check Authorization header as fallback
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-        else:
-            raise HTTPException(status_code=401, detail="Token missing")
+        raise HTTPException(status_code=401, detail="Token missing")
+        
+
+    if token.startswith("Bearer "):
+        token = token.split(" ")[1]
+    else:
+        raise HTTPException(status_code=401, detail="Invalid token format")
     
-    payload = decode_access_token(token)
-    email = payload.get("sub")
-    if not email:
+    try:
+        payload = decode_access_token(token)
+        email = payload.get("sub")
+    
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
-    # Return response with CORS headers
     return {
         "user": {
             "name": user.name,
-            "email": user.email
+            "email": user.email,
+            "role": user.role
         }
     }
      
+@app.get("/admin/dashboard")
+def admin_dashboard(current_user: User = Depends(get_current_user)):
+    """
+    Access the admin dashboard. Only accessible by admin users.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+    
+    return {"message": "Welcome to the admin dashboard!"}
         
 
 @app.post("/logout")

@@ -31,8 +31,13 @@ def create_access_token(data:dict, expires_delta: timedelta | None=None):
 
 def decode_access_token(token: str):
     try:
+        print(f"Attempting to decode token with SECRET_KEY: {SECRET_KEY} and ALGORITHM: {ALGORITHM}")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.JWTError:
+    except jwt.ExpiredSignatureError:
+        print("Token has expired")
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.JWTError as e:
+        print(f"JWT Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
     
