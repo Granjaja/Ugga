@@ -78,7 +78,9 @@ def upsert_to_pinecone(path:str, acl: dict):
        """ 
        i is the index(chunk number)
        embedding is the vector for the chunk
-       Access Control List (ACL) is a dictionary specifying read and write permissions for the vector."""
+       Access Control List (ACL) is a dictionary specifying read and write permissions for the vector.
+       """
+       
        vector_id = f"{doc_id}_chunk_{i}"
 
        metadata = {
@@ -88,8 +90,7 @@ def upsert_to_pinecone(path:str, acl: dict):
            "acl": acl,  
            "text_preview": chunks[i][:100]
          }
-       
-    items.append((vector_id, embedding, metadata))  # Append tuple of vector_id, embedding, metadata to items list
+       items.append((vector_id, embedding, metadata))  # Append tuple of vector_id, embedding, metadata to items list
 
     # Upsert in batches to Pinecone
     batch_size = 100

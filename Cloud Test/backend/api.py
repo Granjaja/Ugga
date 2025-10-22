@@ -54,7 +54,6 @@ class QueryRequest(BaseModel):
 
 
 def authorize_user(authorization: str = Header(None)):
-    print("AUTH HEADER:", {authorization})
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
     
@@ -129,6 +128,7 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
             "metadata": match['metadata']
         })
 
+
     #7. Build the prompt with the retrieved contexts and call LLM
     prompt = build_prompt(req.query, contexts)
 
@@ -154,7 +154,6 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
         "returned_docs": [c['metadata']['doc_id'] for c in contexts],
     }
 
-    print("AUDIT LOG:", audit)
 
 
     #5. Return the answer and sources
@@ -168,7 +167,7 @@ async def upload_file(file: UploadFile = File(...)):
     try:
         file_path = os.path.join(DOC_ROOT, file.filename)
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            shutil.copyfileobj(file.file, buffer) # Copy file content to buffer
         return {"filename": file.filename, "message": "File uploaded successfully"}
     except Exception as e:
         return {"error": str(e)}
