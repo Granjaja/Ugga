@@ -1,7 +1,16 @@
+import { getServerSession } from 'next-auth'
 import Link from 'next/link'
 import React from 'react'
+import { authOptions } from '../auth';
+import { useSession } from 'next-auth/react';
+
 
 const Sidebar = () => {
+
+  const session = useSession();
+  if (session.data?.user.role !== 'Admin') {
+    return null;
+  }
   return (
     <div>
       <div>

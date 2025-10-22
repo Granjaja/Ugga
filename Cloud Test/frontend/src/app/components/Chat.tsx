@@ -21,9 +21,7 @@ export default  function Chat() {
     const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
-    if (!session) {
-      redirect('/auth/login');
-    }
+   
 
     const send = async () => {
         if (!input.trim() || !session?.access_token) return;

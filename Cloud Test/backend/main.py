@@ -11,6 +11,7 @@ from api import api_router
 from fastapi.responses import JSONResponse
 from jose import JWTError
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -59,6 +60,12 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    admin_email = os.getenv("ADMIN_EMAIL")
+
+    if user.email == admin_email:
+        user.role = "Admin"
+    else:
+        user.role = "employee"
     
     hashed_password = hash_password(user.password)
     new_user = User(
@@ -99,7 +106,6 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     #     max_age=3600
     # )
 
-    print("Generated token:", token)
     
     return {
         "access_token": token,
@@ -115,7 +121,6 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/get_current_user")
 def get_current_user(request: Request, db: Session = Depends(get_db)):
-    print("Received get_current_user request with headers:", request.cookies)
     token = request.cookies.get("access_token") or request.headers.get("Authorization")
     
     if not token:
