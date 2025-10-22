@@ -3,7 +3,15 @@ import { getSession, signIn } from 'next-auth/react'
 import { cookies } from 'next/headers'
 
 
+// Function to handle user registration
+
 export async function registerUser(prevState: any, formData: FormData) {
+
+  /*
+  Takes previous state and form data as arguments
+  Returns object with success status, errors object, and empty errors object on success
+  */
+ 
   const name = formData.get('name')?.toString().trim()
   const email = formData.get('email')?.toString().trim()
   const password = formData.get('password')?.toString()
@@ -20,7 +28,7 @@ export async function registerUser(prevState: any, formData: FormData) {
     return { errors, success: false }
   }
 
-  // Backend request 
+  // Call backend API to register user
   try {
     const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -62,11 +70,12 @@ export async function registerUser(prevState: any, formData: FormData) {
   }
 }
 
-
+// Function to login user
 export async function loginUser(prevState: any, formData: FormData) {
   const email = formData.get('email')?.toString().trim()
   const password = formData.get('password')?.toString()
 
+//Use sign in from next-auth to handle login
   try {
       const res = await signIn('credentials', {
           redirect: false,
@@ -93,7 +102,7 @@ export async function loginUser(prevState: any, formData: FormData) {
 }
 
  
-
+// Function to logout user using backend API
 export async function logoutUser() {
   try {
     const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
@@ -130,7 +139,10 @@ export async function logoutUser() {
   }
 }
 
+// Function to fetch user data using backend API
 export async function fetchUserData() {
+
+  // check if user is authenticated
   const session = await getSession()
   const token = session?.access_token
 

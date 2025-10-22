@@ -4,10 +4,6 @@ import Image from "next/image";
 
 
 export default function Home() {
-
-  
-      
-
   
   return (
       <div className="flex items-center  flex-col max-w-4xl w-full m-auto min-h-screen p-3 border border-gray-300 rounded-md">

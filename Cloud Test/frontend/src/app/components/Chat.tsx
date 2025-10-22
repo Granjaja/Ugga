@@ -22,7 +22,6 @@ export default  function Chat() {
 
 
    
-
     const send = async () => {
         if (!input.trim() || !session?.access_token) return;
       
@@ -56,6 +55,7 @@ export default  function Chat() {
 
             const data = await resp.json();
 
+            // Pass current state value as the argument for function passed into setMessages function
             setMessages((m) => [...m, { role: "assistant", text: data.answer }]);
 
             setSources(data.sources || []);

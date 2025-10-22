@@ -17,13 +17,7 @@ export default function LoginForm() {
   const router = useRouter();
 
   // const [state, action, pending] = useActionState(loginUser, { errors: {}, success: false });
-  // const router = useRouter()
-
-  // useEffect(()=>{
-  //   if (state.success ){
-  //     router.push("/chat")
-  //   }
-  // })
+ 
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,7 +25,7 @@ export default function LoginForm() {
     setError(null);
 
 
-// Call signIn from the client side
+// Use signIn from next-auth/react to handle login
   const result = await signIn('credentials', {
       redirect: false,
       email,

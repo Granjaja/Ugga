@@ -8,10 +8,8 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 
 function Nav() {
 
-    
-    const {data: session} = useSession();
-
-    
+  // Use session data from next-auth/react to get user name and check authentication
+  const {data: session} = useSession();
 
   return (
     <div className="flex items-center justify-between m-2 p-2">

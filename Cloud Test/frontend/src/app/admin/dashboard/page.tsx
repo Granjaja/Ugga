@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 
+// Admin Dashboard for File Upload
 function page() {
   return (
     <div className='flex justify-center items-center gap-4'>
