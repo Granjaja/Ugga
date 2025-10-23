@@ -1,15 +1,13 @@
 import os
 from openai import OpenAI
-from pinecone import Pinecone
+from pinecone import Pinecone, ServerlessSpec
 import time
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, APIRouter, UploadFile, File
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordBearer
 from database import SessionLocal
-from sqlalchemy.orm import Session
 from jose import JWTError
-from models import User
 from auth import decode_access_token
 import shutil
 
@@ -31,6 +29,19 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 pc = Pinecone(
         api_key=PINECONE_API_KEY
     )
+
+# Create Pinecone index if it doesn't exist
+if not pc.has_index(INDEX_NAME):
+    pc.create_index(
+        name=INDEX_NAME,
+        dimension=1536,
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region="us-east-1"
+        )
+    )
+
 index = pc.Index(INDEX_NAME)
 
 
@@ -82,16 +93,30 @@ def authorize_user(authorization: str = Header(None)):
 
 #Function to build the prompt 
 def build_prompt(query: str, contexts: list[dict]) -> str:
-    prompt = "You are a knowledgeable assistant. Use only the provided context to answer the question and cite sources by doc_id and chunk_index.\n\n"
-    prompt += "Context:\n"
+    print("contexts:", contexts)
+
+    prompt = (   "You are an intelligent and detail-oriented assistant. "
+    "Your task is to answer the user's question using the information provided in the document contexts."
+    "Restrict yourself to the information provided in the contexts unless it's greetings. Don't use external knowledge."
+    
+    "Your goal is to extract insights as precisely as possible — even small or indirect clues in the text may contain the answer. "
+    "Synthesize evidence from multiple chunks if needed to form a complete, well-supported response.\n\n"
+        
+    "Always include citations for every factual statement using this format: [doc_id::chunk_index]. \n\n"
+    
+    "Be concise but comprehensive — avoid speculation, and ensure every part of the answer is grounded in the provided context.\n\n"
+    
+    )
 
     """loop through all the retrieved document chunks (stored in contexts)"""
 
     for context in contexts:
-        prompt += f"[{context['doc_id']} - chunk {context['chunk_index']}]: {context['text']}\n"
-        prompt += f"---\nDOC: {context['metadata']['doc_id']} (chunk {context['metadata']['chunk_index']})\n{context['metadata']['text_preview']}\n\n"
+        prompt += f"[{context['metadata']['doc_id']} - chunk {context['metadata']['chunk_index']}]: {context['metadata']['text_preview']}\n"
+
    
     prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like [doc_id::chunk_index]."
+
+    
     return prompt
 
 
@@ -101,6 +126,7 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
     #1. Embed the query
 
     query_text = req.query
+
 
     #2. Generate embedding for the query using OpenAI
     embedding_response = client.embeddings.create(model = "text-embedding-3-small", input=query_text)
@@ -127,7 +153,9 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
             "score": match['score'],
             "metadata": match['metadata']
         })
-
+    
+    if not contexts:
+        return {"answer": "Sorry, I couldn't find any relevant documents to answer your question.", "sources": []}
 
     #7. Build the prompt with the retrieved contexts and call LLM
     prompt = build_prompt(req.query, contexts)
@@ -145,7 +173,7 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
 
     answer = completion.choices[0].message.content
 
-    #4. Audit log entry for the query and response 
+    #9. Audit log entry for the query and response 
 
     audit = {
         "timestamp": int(time.time()),
@@ -156,7 +184,7 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
 
 
 
-    #5. Return the answer and sources
+    #10. Return the answer and sources
     sources = [{"doc_id": c['metadata']['doc_id'], "chunk_index": c['metadata']['chunk_index'], "text_preview": c['metadata']['text_preview'], "source_path": c['metadata']['source']} for c in contexts]
 
     return {"answer": answer, "sources": sources, "audit_log": audit}

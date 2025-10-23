@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from tika import parser
 import openai
 import glob
+from openai import OpenAI
+import json
 
 
 load_dotenv()
@@ -14,23 +16,24 @@ PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
 INDEX_NAME = os.getenv("PINECONE_INDEX")
 DOC_ROOT = os.getenv("DOC_ROOT")
 
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Initialize Pinecone 
 pc = Pinecone(
         api_key=PINECONE_API_KEY
     )
 
+
 # Create Pinecone index if it doesn't exist
 if not pc.has_index(INDEX_NAME):
-    pc.create_index_for_model(
+    pc.create_index(
         name=INDEX_NAME,
-        cloud="aws",
-        region="us-east-1",
-        embed={
-            "model":"llama-text-embed-v2",
-            "field_map":{"text": "chunk_text"}
-        }
+        dimension=1536,
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region="us-east-1"
+        )
     )
 
 index = pc.Index(INDEX_NAME)
@@ -39,6 +42,7 @@ index = pc.Index(INDEX_NAME)
 # Function to extract text from file using Apache Tika
 def extract_text(path: str) -> str:
     """Extract text from a file."""
+
     parsed = parser.from_file(path)
     text = parsed.get("content", "")
     return text.strip() 
@@ -55,21 +59,29 @@ def chunk_text(text:str, chunk_size:1000, overlap:200):
 
 #Function to embed text using OpenAI
 def embed_text(text: list[str]) -> list[list[float]]:
+
     """Embed text using OpenAI."""
-    resp =openai.Embeddings.create(
+
+    resp =openai.embeddings.create(
         input=text,
         model="text-embedding-3-small"
     )
     return [item.embedding for item in resp.data]
     
 def upsert_to_pinecone(path:str, acl: dict):
+
     """Upsert vectors to Pinecone."""
     text = extract_text(path)
+
     if not text:
         print(f"No text found in {path}"); return
     
     doc_id = os.path.splitext(os.path.basename(path))[0]
-    chunks = list(chunk_text(text))
+    chunks = list(chunk_text(text, chunk_size=1000, overlap=200))
+
+    if not chunks:
+        print(f"No chunks found in {path}"); return
+    
     embeddings = embed_text(chunks)
 
     items = []
@@ -87,7 +99,7 @@ def upsert_to_pinecone(path:str, acl: dict):
            "source": path,
            "doc_id": doc_id,
            "chunk_index": i,
-           "acl": acl,  
+           "acl": json.dumps(acl),  
            "text_preview": chunks[i][:100]
          }
        items.append((vector_id, embedding, metadata))  # Append tuple of vector_id, embedding, metadata to items list
@@ -101,6 +113,8 @@ def upsert_to_pinecone(path:str, acl: dict):
 
 
 def discover_and_ingest(path: str, acl: dict):
+    print(f"Discovering files in {path}", acl)
+
     """
     Discover files in a directory and ingest them.
     
