@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 
 const UploadPage = () => {
@@ -10,7 +10,7 @@ const UploadPage = () => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
 
-    const fetchFiles = async () => {
+    const fetchFiles = useCallback(async () => {
       try {
         const res = await fetch(`${NEXT_PUBLIC_API_URL}/api/list-files`);
 
@@ -20,13 +20,13 @@ const UploadPage = () => {
         }
         
       } catch (error) {
-        setMessage('An error occurred. Please try again.');
+        setMessage(`An error occurred. Please try again:${error}`);
       }
-    };
+    }, [NEXT_PUBLIC_API_URL]);
 
     useEffect(() => {
       fetchFiles();
-    }, []);
+    }, [fetchFiles]);
      
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -59,7 +59,7 @@ const UploadPage = () => {
           } else {
             setMessage('File upload failed. Please try again.');
           }
-        } catch (error) {
+        } catch {
           setMessage('An error occurred. Please try again.');
         }
       };

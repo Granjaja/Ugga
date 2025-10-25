@@ -1,6 +1,5 @@
 "use client"
 
-import { redirect } from 'next/navigation';
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useSession } from 'next-auth/react';
@@ -14,7 +13,7 @@ export default  function Chat() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const [sources, setSources] = useState<any[]>([]);
+    const [sources, setSources] = useState<Source[]>([]);
     const {data: session} = useSession();
 
 
@@ -59,7 +58,7 @@ export default  function Chat() {
 
             setSources(data.sources || []);
 
-        } catch (err) {
+        } catch {
             setMessages((m) => [...m, { role: "assistant", text: "Error: could not fetch answer." }]);
             } finally {
             setLoading(false);

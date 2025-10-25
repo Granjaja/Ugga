@@ -1,7 +1,5 @@
-import { getServerSession } from 'next-auth'
 import Link from 'next/link'
 import React from 'react'
-import { authOptions } from '../auth';
 import { useSession } from 'next-auth/react';
 
 

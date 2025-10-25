@@ -9,7 +9,7 @@ export const authOptions: AuthOptions = {
                 email: { label: "Email", type: "text" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials, req) {
+            async authorize(credentials) {
                 try {
                 
                     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {

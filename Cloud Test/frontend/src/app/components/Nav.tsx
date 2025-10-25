@@ -1,10 +1,9 @@
 "use client"
-import React, { use, useEffect, useState } from 'react'
+import React from 'react'
 import { Button } from './ui/button'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation';
-import { currentUser, logoutUser } from '../auth/actions';
-import { useSession, signIn, signOut } from 'next-auth/react';
+
+import { useSession, signOut } from 'next-auth/react';
 
 function Nav() {
 

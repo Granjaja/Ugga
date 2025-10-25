@@ -3,9 +3,20 @@ import { getSession, signIn } from 'next-auth/react'
 import { cookies } from 'next/headers'
 
 
+
+interface FormState {
+  success: boolean;
+  errors: {
+    name?: string ;
+    email?: string ;
+    password?: string[];
+    general?: string ;
+  };
+}
+
 // Function to handle user registration
 
-export async function registerUser(prevState: any, formData: FormData) {
+export async function registerUser(prevState: FormState, formData: FormData):Promise<FormState> {
 
   /*
   Takes previous state and form data as arguments
@@ -16,7 +27,7 @@ export async function registerUser(prevState: any, formData: FormData) {
   const email = formData.get('email')?.toString().trim()
   const password = formData.get('password')?.toString()
 
-  const errors: Record<string, any> = {}
+  const errors: Record<string, string|string[]> = {}
 
   // Frontend validation
   if (!name) errors.name = 'Name is required'
@@ -51,7 +62,7 @@ export async function registerUser(prevState: any, formData: FormData) {
           errors: { email: data.detail || 'Registration failed' },
           success: false,
         };
-      } catch (e) {
+      } catch {
         console.error('Error parsing JSON:', responseText);
         return {
           errors: { general: 'An unexpected error occurred from the server.' },
@@ -71,7 +82,7 @@ export async function registerUser(prevState: any, formData: FormData) {
 }
 
 // Function to login user
-export async function loginUser(prevState: any, formData: FormData) {
+export async function loginUser(prevState: FormState, formData: FormData) {
   const email = formData.get('email')?.toString().trim()
   const password = formData.get('password')?.toString()
 
@@ -120,7 +131,7 @@ export async function logoutUser() {
           errors: { general: data.detail || 'Logout failed' },
           success: false,
         };
-      } catch (e) {
+      } catch {
         console.error('Error parsing JSON:', responseText);
         return {
           errors: { general: 'An unexpected error occurred from the server.' },

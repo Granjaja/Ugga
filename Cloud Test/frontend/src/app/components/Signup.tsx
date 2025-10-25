@@ -20,9 +20,11 @@ export default function SignupForm() {
 
   const session = useSession()
 
+  useEffect(() => {
   if (session){
     logoutUser()
   }
+},[session])
 
   return (
     <form action={formAction} className="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg space-y-4">
