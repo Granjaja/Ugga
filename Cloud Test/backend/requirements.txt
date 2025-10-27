@@ -6,3 +6,5 @@ openai
 python-dotenv
 tika
 sqlalchemy
+psycopg2-binary
+alembic
