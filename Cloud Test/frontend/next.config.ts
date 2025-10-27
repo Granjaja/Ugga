@@ -6,6 +6,6 @@ const nextConfig: NextConfig = {
   /* config options here */
 };
 
-export default defineCloudflareConfig({
-});
+// export default defineCloudflareConfig({
+// });
 

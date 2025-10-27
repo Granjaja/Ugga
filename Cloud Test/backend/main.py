@@ -48,7 +48,9 @@ def get_db():
     finally:
         db.close()
 
-
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Ugga"}
 
 # Register a new user
 @app.post("/register", response_model=UserResponse)
