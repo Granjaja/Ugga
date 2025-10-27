@@ -31,12 +31,12 @@ function Nav() {
       
 <div className="flex items-center justify-center gap-4">
     {session ? (
-        <>
-          <button onClick={() => signOut()}>Logout</button>
-        </>
+        <Link href={"/auth/login"} >
+          <Button className='hover:underline hover:text-teal-400'>Logout</Button> 
+          </Link>
       ) : (
         <Link href={"/auth/login"} >
-          <Button className='hover:underline'>Login</Button> 
+          <Button className='hover:underline hover:text-teal-400'>Login</Button> 
           </Link>
         
       )}
