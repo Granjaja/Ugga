@@ -3,7 +3,7 @@ import React from 'react'
 import { Button } from './ui/button'
 import Link from 'next/link'
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 function Nav() {
 
