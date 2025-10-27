@@ -8,3 +8,4 @@ tika
 sqlalchemy
 psycopg2-binary
 alembic
+passlib
