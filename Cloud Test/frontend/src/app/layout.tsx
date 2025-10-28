@@ -27,7 +27,7 @@ export default function RootLayout({
       
 
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased m-5`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased m-3`}
       >
         <Providers>
             <Nav />
