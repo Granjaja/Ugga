@@ -93,19 +93,11 @@ def authorize_user(authorization: str = Header(None)):
 
 #Function to build the prompt 
 def build_prompt(query: str, contexts: list[dict]) -> str:
-    print("contexts:", contexts)
 
     prompt = (   "You are an intelligent and detail-oriented assistant. "
     "Your task is to answer the user's question using the information provided in the document contexts."
     "Restrict yourself to the information provided in the contexts unless it's greetings. Don't use external knowledge."
-    
-    "Your goal is to extract insights as precisely as possible — even small or indirect clues in the text may contain the answer. "
-    "Synthesize evidence from multiple chunks if needed to form a complete, well-supported response.\n\n"
-        
-    "Always include citations for every factual statement using this format: [doc_id::chunk_index]. \n\n"
-    
-    "Be concise but comprehensive — avoid speculation, and ensure every part of the answer is grounded in the provided context.\n\n"
-    
+                
     )
 
     """loop through all the retrieved document chunks (stored in contexts)"""
@@ -114,7 +106,7 @@ def build_prompt(query: str, contexts: list[dict]) -> str:
         prompt += f"[{context['metadata']['doc_id']} - chunk {context['metadata']['chunk_index']}]: {context['metadata']['text_preview']}\n"
 
    
-    prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like [doc_id::chunk_index]."
+    prompt += f"\nQuestion: {query}\nAnswer concisely and include citations like {context['metadata']['doc_id']}::{context['metadata']['chunk_index']}."
 
     
     return prompt
@@ -126,7 +118,6 @@ async def query_endpoint(req: QueryRequest, user: dict = Depends(authorize_user)
     #1. Embed the query
 
     query_text = req.query
-
 
     #2. Generate embedding for the query using OpenAI
     embedding_response = client.embeddings.create(model = "text-embedding-3-small", input=query_text)

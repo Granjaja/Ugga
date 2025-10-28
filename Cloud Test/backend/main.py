@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from models import User
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer
 from typing import Set
 from api import api_router
 from fastapi.responses import JSONResponse
@@ -23,7 +23,7 @@ app.include_router(api_router, prefix="/api")
 #Cross-Origin Resource Sharing(CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ugga-1.onrender.com"],
+    allow_origins=["http://localhost:3000", "https://ugga-1.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Content-Type", "Authorization"],

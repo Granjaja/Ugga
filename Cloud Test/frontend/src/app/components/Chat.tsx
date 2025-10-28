@@ -66,14 +66,25 @@ export default  function Chat() {
         };
 
 return(
-<div className='flex   m-4'>
-  <div className='w-1/5'>
+  <div>
+  <h2 className='text-xl font-bold m-4 flex items-center justify-center p-2 rounded-md'>
+    What would you like to look up today?
+  </h2>
+<div className='flex'>
+
+  
+  {
+    session?.user.role === "admin" && 
+    <div className='w-1/5'>
         <Sidebar />
       </div>
+
+  }
+  
       
-    <div className="w-4/5">
+    <div className={session?.user.role === "admin" ? "w-4/5" : "w-full"}>
       
-      <div className="border rounded p-5 min-h-48 max-h-96 overflow-auto m-5 bg-white">
+      <div className="border rounded w-auto p-5 min-h-48 max-h-96 overflow-auto m-5 bg-white">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "text-right" : "text-left my-2"}>
             <div className={m.role === "user" ? "inline-block bg-blue-100 p-2 rounded" : "inline-block bg-gray-100 p-2 rounded"}>
@@ -105,6 +116,7 @@ return(
           </ul>
         </div>
       )}
+    </div>
     </div>
     </div>
 )

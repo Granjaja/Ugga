@@ -21,6 +21,8 @@ export const authOptions: AuthOptions = {
                         })
                     });
 
+                    console.log('Response:', res);
+
                 
 
                     if (!res.ok) {
