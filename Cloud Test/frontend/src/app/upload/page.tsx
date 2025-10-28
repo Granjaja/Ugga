@@ -64,7 +64,6 @@ const UploadPage = () => {
         }
       };
 
-      //Fetch uploaded files list
     
 
 
