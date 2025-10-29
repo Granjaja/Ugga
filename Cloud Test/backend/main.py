@@ -89,8 +89,12 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     Login a user and return an access token.
     """
     user = db.query(User).filter(User.email == form_data.email).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+   
+    if not user:
+        raise HTTPException(status_code=401, detail="Email not found. Please sign up.")
+    
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid password.")
     
     token = create_access_token({"sub": user.email})
     
