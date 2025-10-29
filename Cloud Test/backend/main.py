@@ -67,7 +67,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if user.email == admin_email:
         user.role = "Admin"
     else:
-        user.role = "employee"
+        user.role = "Employee"
     
     hashed_password = hash_password(user.password)
     new_user = User(

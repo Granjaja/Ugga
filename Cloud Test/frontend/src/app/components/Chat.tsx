@@ -74,7 +74,7 @@ return(
 
   
   {
-    session?.user.role === "admin" && 
+    session?.user.role === "Admin" && 
     <div className='w-1/5'>
         <Sidebar />
       </div>
