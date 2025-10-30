@@ -2,14 +2,22 @@
 import React from 'react'
 import { Button } from './ui/button'
 import Link from 'next/link'
-
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
+import { logoutUser } from '../auth/actions';
+import { useRouter } from 'next/navigation';
 
 function Nav() {
 
   // Use session data from next-auth/react to get user name and check authentication
   const {data: session} = useSession();
+  const router = useRouter()
 
+  // const handleLogout = async () => {
+  //   await logoutUser()
+  //   router.push('/auth/login')
+  // }
+
+  
   return (
     <nav className="flex items-center m-2 bg-white rounded-md shadow-sm">
         <div className='m-2'>
@@ -25,21 +33,14 @@ function Nav() {
       </div>
       <div className='flex-grow text-center'>
         <h3 className="font-medium m-2 md:inline-block">
-                {session ? (
-                    <>
-                    Welcome, <span className="text-orange-400">{session?.user?.name}</span>
-                    </>
-                ) : ( "Welcome")}
-
+          Welcome {session?.access_token ? <span className="text-orange-400">{session?.user?.name}</span> : ""}
       </h3>
       </div>
       
       
 <div className="flex items-center justify-center gap-4">
-    {session ? (
-        <Link href={"/auth/login"} >
-          <Button className='hover:underline hover:text-teal-400'>Logout</Button> 
-          </Link>
+    {session?.access_token ? (
+          <Button onClick={() => signOut()} className='hover:underline hover:text-teal-400'>Logout</Button> 
       ) : (
         <Link href={"/auth/login"} >
           <Button className='hover:underline hover:text-teal-400'>Login</Button> 

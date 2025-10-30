@@ -3,18 +3,20 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
 
 
 type Message = {role: "user" | "assistant", text: string}
 type Source = {doc_id: string, chunk_index: number, text_preview: string, source_path: string}
 
 export default  function Chat() {
-  
+   const {data: session} = useSession();
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [sources, setSources] = useState<Source[]>([]);
-    const {data: session} = useSession();
+   
 
 
     const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -65,6 +67,7 @@ export default  function Chat() {
             }
         };
 
+       
 return(
   <div>
   <h2 className='text-xl font-bold m-4 flex items-center justify-center p-2 rounded-md'>

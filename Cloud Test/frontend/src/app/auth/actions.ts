@@ -94,6 +94,8 @@ export async function loginUser(prevState: FormState, formData: FormData) {
           password,
       });
 
+      console.log('Login response:', res);
+
       if (res?.error) {
         return {
           errors: { general: res.error || 'Login failed' },
@@ -111,7 +113,6 @@ export async function loginUser(prevState: FormState, formData: FormData) {
   }
 
 }
-
  
 // Function to logout user using backend API
 export async function logoutUser() {
@@ -122,6 +123,8 @@ export async function logoutUser() {
       method: 'POST',
       credentials: 'include',
     })
+
+    console.log('Logout response:', res);
 
     if (!res.ok) {
       const responseText = await res.text();
@@ -198,8 +201,6 @@ export async function currentUser() {
       credentials: 'include',
       headers,
     })
-
-    console.log('currentUser response status:', res);
 
     if (!res.ok) {
       const responseText = await res.text().catch(() => '')

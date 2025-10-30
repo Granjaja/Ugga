@@ -20,9 +20,6 @@ export const authOptions: AuthOptions = {
                             password: credentials?.password,
                         })
                     });
-
-                    console.log('Response:', res);
-
                 
 
                     if (!res.ok) {
@@ -40,8 +37,8 @@ export const authOptions: AuthOptions = {
                         throw new Error(errorMessage);
                     }
                     
-                    const data = await res.json();
-                    return { id: data.user.id, name: data.user.name, email: data.user.email, access_token: data.access_token, role: data.user.role };
+                    const user = await res.json();
+                    return { id: user.user.id, name: user.user.name, email: user.user.email, access_token: user.access_token, role: user.user.role };
                 } catch (error) {
                     console.error('Error during authorization:', error);
                     throw new Error( error instanceof Error ? error.message : 'An unknown error occurred' );
@@ -51,7 +48,7 @@ export const authOptions: AuthOptions = {
     ],
     session: {
         strategy: "jwt",
-        maxAge: 30 * 60, // 30 minutes
+        maxAge: 60 * 60, // 60 minutes
     },
     secret: process.env.NEXTAUTH_SECRET,
     
@@ -63,10 +60,20 @@ export const authOptions: AuthOptions = {
             if (user) {
                 token.access_token = user.access_token;
                 token.role = user.role;
+                token.expires_at = Date.now() + 60 * 60 * 1000
+            }
+            if (Date.now() > token.expires_at) {
+                token.access_token = '';
+                token.role = '';
+                token.expires_at = 0;
             }
             return token;
         },
         async session({ session, token }) {
+            
+            if (!token.access_token){
+                
+            }
             session.access_token = token.access_token;
             if (session.user) {
                 session.user.role = token.role;
